@@ -1,0 +1,248 @@
+--------------------------------------------------------------------------------
+
+original apk:
+=============
+
+https://download.strongswan.org/Android
+https://download.strongswan.org/Android/strongSwan-2.5.2.apk
+
+package   = org.strongswan.android
+version   = 2.5.2
+date      = 2024-08-06
+size      = 14.1 MB
+SHA-1     = e57f8073cbc70e1359ddb28d30c5f1b76804093a
+signature = 4afc1331f9086d0c0bfbe188a6ad940bcc4fa86f
+
+https://github.com/strongswan/strongswan/releases/tag/android-2.5.2
+https://github.com/strongswan/strongswan/commit/740cbb2c0ab8116753e352cac41dbf922f65e555
+
+tag       = android-2.5.2
+commit    = 740cbb2c0ab8116753e352cac41dbf922f65e555
+date      = Aug 6, 2024, 9:02 AM PDT
+
+https://github.com/strongswan/strongswan/commit/9b9cf2001f071eba3bb819cb85db4e5083ed3c83
+commit    = 9b9cf2001f071eba3bb819cb85db4e5083ed3c83
+date      = Aug 6, 2024, 11:58 PM PDT
+
+https://github.com/strongswan/strongswan/tree/master/src/frontends/android
+https://github.com/strongswan/strongswan/commits/master/src/frontends/android
+  unchanged since commit: 9b9cf2001f071eba3bb819cb85db4e5083ed3c83
+
+--------------------------------------------------------------------------------
+
+tools:
+======
+  * apktool 2.6.1
+
+--------------------------------------------------------------------------------
+
+objective:
+==========
+  * when importing a .sswan profile config file,
+    add the ability to read the cleartext password (ie: EAP secret)
+
+references:
+===========
+  https://github.com/strongswan/strongswan/issues/2589#issuecomment-2645989853
+
+--------------------------------------------------------------------------------
+
+patch (Java) #1:
+================
+
+file = src\frontends\android\app\src\main\java\org\strongswan\android\ui\VpnProfileImportActivity.java
+line = 509-512
+url  = https://github.com/strongswan/strongswan/blob/6.0.0/src/frontends/android/app/src/main/java/org/strongswan/android/ui/VpnProfileImportActivity.java#L509-L512
+old code:
+			if (type.has(VpnTypeFeature.USER_PASS))
+			{
+				profile.setUsername(local.optString("eap_id", null));
+			}
+new code:
+			if (type.has(VpnTypeFeature.USER_PASS))
+			{
+				profile.setUsername(local.optString("eap_id", null));
+				profile.setPassword(local.optString("eap_secret", null));
+			}
+
+--------------------------------------------------------------------------------
+
+patch (Java) #2:
+================
+
+file = src\frontends\android\app\src\main\java\org\strongswan\android\ui\VpnProfileImportActivity.java
+line = 386-393
+url  = https://github.com/strongswan/strongswan/blob/6.0.0/src/frontends/android/app/src/main/java/org/strongswan/android/ui/VpnProfileImportActivity.java#L386-L393
+old code:
+		if (mProfile.getVpnType().has(VpnTypeFeature.USER_PASS))
+		{
+			mUsername.setText(mProfile.getUsername());
+			if (mProfile.getUsername() != null && !mProfile.getUsername().isEmpty())
+			{
+				mUsername.setEnabled(false);
+			}
+		}
+new code:
+		if (mProfile.getVpnType().has(VpnTypeFeature.USER_PASS))
+		{
+			mUsername.setText(mProfile.getUsername());
+			if (mProfile.getUsername() != null && !mProfile.getUsername().isEmpty())
+			{
+				mUsername.setEnabled(false);
+
+				mPassword.setText(mProfile.getPassword());
+				if (mProfile.getPassword() != null && !mProfile.getPassword().isEmpty())
+				{
+					mPassword.setEnabled(false);
+				}
+			}
+		}
+references:
+  https://github.com/strongswan/strongswan/blob/6.0.0/src/frontends/android/app/src/main/java/org/strongswan/android/ui/VpnProfileImportActivity.java#L45
+    import org.strongswan.android.data.VpnProfile;
+  https://github.com/strongswan/strongswan/blob/6.0.0/src/frontends/android/app/src/main/java/org/strongswan/android/ui/VpnProfileImportActivity.java#L1010
+    private class ParsedVpnProfile extends VpnProfile
+  https://github.com/strongswan/strongswan/blob/6.0.0/src/frontends/android/app/src/main/java/org/strongswan/android/data/VpnProfile.java#L168
+    public class VpnProfile implements Cloneable {
+      public String getPassword()
+    }
+
+--------------------------------------------------------------------------------
+
+patch (Smali) #1:
+=================
+
+file = smali\org\strongswan\android\ui\VpnProfileImportActivity.smali
+line = 977-983
+old code:
+    const-string v7, "eap_id"
+    invoke-virtual {v6, v7, v4}, Lorg/json/JSONObject;->optString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+    move-result-object v7
+    invoke-virtual {v3, v7}, Lorg/strongswan/android/ui/VpnProfileImportActivity$ParsedVpnProfile;->setUsername(Ljava/lang/String;)V
+new code:
+    # import username
+    const-string v7, "eap_id"
+    invoke-virtual {v6, v7, v4}, Lorg/json/JSONObject;->optString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+    move-result-object v7
+    invoke-virtual {v3, v7}, Lorg/strongswan/android/ui/VpnProfileImportActivity$ParsedVpnProfile;->setUsername(Ljava/lang/String;)V
+
+    # import password
+    const-string v7, "eap_secret"
+    invoke-virtual {v6, v7, v4}, Lorg/json/JSONObject;->optString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+    move-result-object v7
+    invoke-virtual {v3, v7}, Lorg/strongswan/android/ui/VpnProfileImportActivity$ParsedVpnProfile;->setPassword(Ljava/lang/String;)V
+
+--------------------------------------------------------------------------------
+
+patch (Smali) #2:
+=================
+
+file = smali\org\strongswan\android\ui\VpnProfileImportActivity.smali
+line = 2084-2121 (after patch #1)
+old code:
+    iget-object p1, p0, Lorg/strongswan/android/ui/VpnProfileImportActivity;->mUsername:Landroid/widget/EditText;
+    iget-object v3, p0, Lorg/strongswan/android/ui/VpnProfileImportActivity;->mProfile:Lorg/strongswan/android/ui/VpnProfileImportActivity$ParsedVpnProfile;
+    invoke-virtual {v3}, Lorg/strongswan/android/ui/VpnProfileImportActivity$ParsedVpnProfile;->getUsername()Ljava/lang/String;
+    move-result-object v3
+    invoke-virtual {p1, v3}, Landroid/widget/EditText;->setText(Ljava/lang/CharSequence;)V
+
+    iget-object p1, p0, Lorg/strongswan/android/ui/VpnProfileImportActivity;->mProfile:Lorg/strongswan/android/ui/VpnProfileImportActivity$ParsedVpnProfile;
+    invoke-virtual {p1}, Lorg/strongswan/android/ui/VpnProfileImportActivity$ParsedVpnProfile;->getUsername()Ljava/lang/String;
+    move-result-object p1
+    if-eqz p1, :cond_6
+
+    iget-object p1, p0, Lorg/strongswan/android/ui/VpnProfileImportActivity;->mProfile:Lorg/strongswan/android/ui/VpnProfileImportActivity$ParsedVpnProfile;
+    invoke-virtual {p1}, Lorg/strongswan/android/ui/VpnProfileImportActivity$ParsedVpnProfile;->getUsername()Ljava/lang/String;
+    move-result-object p1
+    invoke-virtual {p1}, Ljava/lang/String;->isEmpty()Z
+    move-result p1
+    if-nez p1, :cond_6
+
+    iget-object p1, p0, Lorg/strongswan/android/ui/VpnProfileImportActivity;->mUsername:Landroid/widget/EditText;
+    invoke-virtual {p1, v2}, Landroid/widget/EditText;->setEnabled(Z)V
+
+    :cond_6
+notes:
+  * a lot of redundant code can be removed if an additional variable could be used
+  * a new value is assigned to "v5" after :cond_6
+new code:
+    # --------------------
+    # populate username
+
+    # v3 = mUsername
+    iget-object v3, p0, Lorg/strongswan/android/ui/VpnProfileImportActivity;->mUsername:Landroid/widget/EditText;
+
+    # p1 = mProfile
+    iget-object p1, p0, Lorg/strongswan/android/ui/VpnProfileImportActivity;->mProfile:Lorg/strongswan/android/ui/VpnProfileImportActivity$ParsedVpnProfile;
+
+    # v5 = mProfile.getUsername()
+    invoke-virtual {p1}, Lorg/strongswan/android/ui/VpnProfileImportActivity$ParsedVpnProfile;->getUsername()Ljava/lang/String;
+    move-result-object v5
+
+    # mUsername.setText(mProfile.getUsername());
+    invoke-virtual {v3, v5}, Landroid/widget/EditText;->setText(Ljava/lang/CharSequence;)V
+
+    # if (mProfile.getUsername() == null)
+    if-eqz v5, :cond_6
+
+    # p1 = mProfile.getUsername().isEmpty()
+    # if (p1)
+    invoke-virtual {v5}, Ljava/lang/String;->isEmpty()Z
+    move-result p1
+    if-nez p1, :cond_6
+
+    # mUsername.setEnabled(false)
+    invoke-virtual {v3, v2}, Landroid/widget/EditText;->setEnabled(Z)V
+
+    # --------------------
+    # populate password
+
+    # v3 = mPassword
+    iget-object v3, p0, Lorg/strongswan/android/ui/VpnProfileImportActivity;->mPassword:Landroid/widget/EditText;
+
+    # p1 = mProfile
+    iget-object p1, p0, Lorg/strongswan/android/ui/VpnProfileImportActivity;->mProfile:Lorg/strongswan/android/ui/VpnProfileImportActivity$ParsedVpnProfile;
+
+    # v5 = mProfile.getPassword()
+    invoke-virtual {p1}, Lorg/strongswan/android/ui/VpnProfileImportActivity$ParsedVpnProfile;->getPassword()Ljava/lang/String;
+    move-result-object v5
+
+    # mPassword.setText(mProfile.getPassword());
+    invoke-virtual {v3, v5}, Landroid/widget/EditText;->setText(Ljava/lang/CharSequence;)V
+
+    # if (mProfile.getPassword() == null)
+    if-eqz v5, :cond_6
+
+    # p1 = mProfile.getPassword().isEmpty()
+    # if (p1)
+    invoke-virtual {v5}, Ljava/lang/String;->isEmpty()Z
+    move-result p1
+    if-nez p1, :cond_6
+
+    # mPassword.setEnabled(false)
+    invoke-virtual {v3, v2}, Landroid/widget/EditText;->setEnabled(Z)V
+
+    # --------------------
+    # else
+    :cond_6
+
+--------------------------------------------------------------------------------
+
+instructions:
+=============
+
+1. decode apk and exclude resources:
+     java.exe -jar apktool.jar d -r ./strongSwan-2.5.2.apk -f -o ./decoded
+
+2. apply patches (Smali)
+
+3. rebuild apk
+     java.exe -jar apktool.jar b ./decoded -o ./1.apk
+
+4. zipalign
+     zipalign -p 4 1.apk 2.apk
+
+5. sign
+     java.exe -jar apksigner.jar sign --v1-signing-enabled true --v2-signing-enabled true --v3-signing-enabled true --ks ./android.keystore --out ./strongSwan-2.5.2-mod.apk 2.apk
+
+--------------------------------------------------------------------------------
